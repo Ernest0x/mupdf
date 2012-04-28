@@ -15,7 +15,8 @@ enum { TEXT_PLAIN = 1, TEXT_HTML = 2, TEXT_XML = 3 };
 static char *output = NULL;
 static float resolution = 72;
 static int res_specified = 0;
-static float rotation = 0;
+static float rotation_angle = 0;
+static int rotation_condition = 0;
 
 static int showxml = 0;
 static int showtext = 0;
@@ -61,6 +62,8 @@ static void usage(void)
 		"\t-d\tdisable use of display list\n"
 		"\t-5\tshow md5 checksums\n"
 		"\t-R -\trotate clockwise by given number of degrees\n"
+		"\t    \tappend '>' to rotate only pages with width > height (e.g. -R '90>')\n"
+		"\t    \tappend '<' to rotate only pages with width < height (e.g. -R '90<')\n"
 		"\t-G gamma\tgamma correct output\n"
 		"\t-I\tinvert output\n"
 		"\t-l\tprint outline\n"
@@ -217,7 +220,34 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum)
 		bounds = fz_bound_page(doc, page);
 		zoom = resolution / 72;
 		ctm = fz_scale(zoom, zoom);
-		ctm = fz_concat(ctm, fz_rotate(rotation));
+
+		/* If rotation_condition == 0 rotate in any case 
+		 * If rotation_condition == 1 rotate only if page width > page height 
+		 * If rotation_condition == 2 rotate only if page height > page width */
+		if (rotation_condition == 0)
+		{
+			ctm = fz_concat(ctm, fz_rotate(rotation_angle));
+		}
+		else
+		{
+			float page_width, page_height;
+			float pagewh_ratio = 1.0;
+
+			page_width = bounds.x1 - bounds.x0;
+			page_height = bounds.y1 - bounds.y0;
+			if (page_height > 0)
+				pagewh_ratio = page_width / page_height;
+
+			if (rotation_condition==1 && pagewh_ratio > 1.0)
+			{
+				ctm = fz_concat(ctm, fz_rotate(rotation_angle));
+			}
+			else if (rotation_condition == 2 && pagewh_ratio < 1.0)
+			{
+				ctm = fz_concat(ctm, fz_rotate(rotation_angle));
+			}
+		}
+
 		bounds2 = fz_transform_rect(ctm, bounds);
 		bbox = fz_round_rect(bounds2);
 		/* Make local copies of our width/height */
@@ -435,7 +465,12 @@ int main(int argc, char **argv)
 		case 'o': output = fz_optarg; break;
 		case 'p': password = fz_optarg; break;
 		case 'r': resolution = atof(fz_optarg); res_specified = 1; break;
-		case 'R': rotation = atof(fz_optarg); break;
+		case 'R': 
+			rotation_angle = atof(fz_optarg);
+			rotation_condition = strchr(fz_optarg, '>') ? 1 : 0;
+			if (!rotation_condition)
+				rotation_condition = strchr(fz_optarg, '<') ? 2 : 0;
+			break;
 		case 'a': savealpha = 1; break;
 		case 'b': alphabits = atoi(fz_optarg); break;
 		case 'l': showoutline++; break;
