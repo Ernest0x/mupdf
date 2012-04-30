@@ -47,7 +47,7 @@ static void usage(void)
 	fprintf(stderr,
 		"usage: mudraw [options] input [pages]\n"
 		"\t-o -\toutput filename (%%d for page number)\n"
-		"\t\tsupported formats: pgm, ppm, pam, png, pbm\n"
+		"\t\tsupported formats: pgm, ppm, pam, png, pbm, fax\n"
 		"\t-p -\tpassword\n"
 		"\t-r -\tresolution in dpi (default: 72)\n"
 		"\t-w -\twidth (in pixels) (maximum width if -r is specified)\n"
@@ -339,6 +339,11 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum)
 					fz_write_pbm(ctx, bit, buf);
 					fz_drop_bitmap(ctx, bit);
 				}
+				else if (strstr(output, ".fax")) {
+					fz_bitmap *bit = fz_halftone_pixmap(ctx, pix, NULL);
+					fz_write_tiff(ctx, bit, buf);
+					fz_drop_bitmap(ctx, bit);
+				}
 			}
 
 			if (showmd5)
@@ -513,6 +518,8 @@ int main(int argc, char **argv)
 	if (output && strstr(output, ".ppm"))
 		colorspace = fz_device_rgb;
 	if (output && strstr(output, ".pbm"))
+		colorspace = fz_device_gray;
+	if (output && strstr(output, ".fax"))
 		colorspace = fz_device_gray;
 	if (grayscale)
 		colorspace = fz_device_gray;

@@ -1403,6 +1403,13 @@ void fz_write_png(fz_context *ctx, fz_pixmap *pixmap, char *filename, int saveal
 void fz_write_pbm(fz_context *ctx, fz_bitmap *bitmap, char *filename);
 
 /*
+	fz_write_tiff: Save a bitmap as a tiff
+
+	filename: The filename to save as (including extension).
+*/
+void fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename);
+
+/*
 	fz_md5_pixmap: Return the md5 digest for a pixmap
 
 	filename: The filename to save as (including extension).

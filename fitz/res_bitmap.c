@@ -75,6 +75,47 @@ fz_write_pbm(fz_context *ctx, fz_bitmap *bitmap, char *filename)
 	fclose(fp);
 }
 
+/*
+ * Write bitmap to TIFF File
+ */
+
+#include <tiffio.h>
+
+void
+fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename)
+{
+	TIFF *image;
+
+	// Open the TIFF file
+	image = TIFFOpen(filename, "w");
+	if(!image)
+		fz_throw(ctx, "cannot open file '%s': %s", filename, strerror(errno));
+
+	int w = bitmap->w;
+	int h = bitmap->h;
+	// We need to set some values for basic tags before we can add any data
+	TIFFSetField(image, TIFFTAG_IMAGEWIDTH, w);
+	TIFFSetField(image, TIFFTAG_IMAGELENGTH, h);
+	TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 1);
+	TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
+	TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, h);
+
+	TIFFSetField(image, TIFFTAG_COMPRESSION, COMPRESSION_CCITTFAX4);
+	TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISWHITE);
+	TIFFSetField(image, TIFFTAG_FILLORDER, FILLORDER_MSB2LSB);
+	TIFFSetField(image, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+
+	TIFFSetField(image, TIFFTAG_XRESOLUTION, 300.0);
+	TIFFSetField(image, TIFFTAG_YRESOLUTION, 300.0);
+	TIFFSetField(image, TIFFTAG_RESOLUTIONUNIT, RESUNIT_INCH);
+  
+	// Write the information to the file
+	TIFFWriteEncodedStrip(image, 0, bitmap->samples, w/8 * h);
+
+	// Close the file
+	TIFFClose(image);
+}
+
 fz_colorspace *fz_pixmap_colorspace(fz_context *ctx, fz_pixmap *pix)
 {
 	if (!pix)
