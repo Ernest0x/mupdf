@@ -96,7 +96,7 @@ static int isrange(char *s)
 	return 1;
 }
 
-static void drawpage(fz_context *ctx, fz_document *doc, int pagenum)
+static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 {
 	fz_page *page;
 	fz_display_list *list = NULL;
@@ -327,7 +327,10 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum)
 			if (output)
 			{
 				char buf[512];
-				sprintf(buf, output, pagenum);
+				if (strstr(output, ".fax"))
+					sprintf(buf, output);
+				else
+					sprintf(buf, output, pagenum);
 				if (strstr(output, ".pgm") || strstr(output, ".ppm") || strstr(output, ".pnm"))
 					fz_write_pnm(ctx, pix, buf);
 				else if (strstr(output, ".pam"))
@@ -341,7 +344,7 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum)
 				}
 				else if (strstr(output, ".fax")) {
 					fz_bitmap *bit = fz_halftone_pixmap(ctx, pix, NULL);
-					fz_write_tiff(ctx, bit, buf);
+					fz_write_tiff(ctx, bit, buf, pagenum, pages);
 					fz_drop_bitmap(ctx, bit);
 				}
 			}
@@ -430,10 +433,10 @@ static void drawrange(fz_context *ctx, fz_document *doc, char *range)
 
 		if (spage < epage)
 			for (page = spage; page <= epage; page++)
-				drawpage(ctx, doc, page);
+				drawpage(ctx, doc, page, epage);
 		else
 			for (page = spage; page >= epage; page--)
-				drawpage(ctx, doc, page);
+				drawpage(ctx, doc, page, epage);
 
 		spec = fz_strsep(&range, ",");
 	}

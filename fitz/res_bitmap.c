@@ -82,12 +82,15 @@ fz_write_pbm(fz_context *ctx, fz_bitmap *bitmap, char *filename)
 #include <tiffio.h>
 
 void
-fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename)
+fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, int pages)
 {
 	TIFF *image;
 
 	// Open the TIFF file
-	image = TIFFOpen(filename, "w");
+	if (pagenum == 1)
+		image = TIFFOpen(filename, "w");
+	else
+		image = TIFFOpen(filename, "a");
 	if(!image)
 		fz_throw(ctx, "cannot open file '%s': %s", filename, strerror(errno));
 
@@ -97,21 +100,29 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename)
 	TIFFSetField(image, TIFFTAG_IMAGEWIDTH, w);
 	TIFFSetField(image, TIFFTAG_IMAGELENGTH, h);
 	TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 1);
-	TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
-	TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, h);
-
 	TIFFSetField(image, TIFFTAG_COMPRESSION, COMPRESSION_CCITTFAX4);
 	TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISWHITE);
-	TIFFSetField(image, TIFFTAG_FILLORDER, FILLORDER_MSB2LSB);
+	TIFFSetField(image, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+	TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
+	TIFFSetField(image, TIFFTAG_GROUP4OPTIONS, 0);
+	TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, h);
 	TIFFSetField(image, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-
-	TIFFSetField(image, TIFFTAG_XRESOLUTION, 300.0);
-	TIFFSetField(image, TIFFTAG_YRESOLUTION, 300.0);
+	TIFFSetField(image, TIFFTAG_FILLORDER, FILLORDER_LSB2MSB);
+	TIFFSetField(image, TIFFTAG_SOFTWARE, "mudraw");
+	TIFFSetField(image, TIFFTAG_XRESOLUTION, 204.0);
+	TIFFSetField(image, TIFFTAG_YRESOLUTION, 196.0);
 	TIFFSetField(image, TIFFTAG_RESOLUTIONUNIT, RESUNIT_INCH);
-  
-	// Write the information to the file
-	TIFFWriteEncodedStrip(image, 0, bitmap->samples, w/8 * h);
+	TIFFSetField(image, TIFFTAG_PAGENUMBER, pagenum-1, pages);
 
+	// Write the information to the file
+	int row;
+	unsigned char *p = bitmap->samples;
+	for(row = 0; row < h; row++)
+	{
+		TIFFWriteScanline(image, p, row, 0);
+		p += bitmap->stride;
+	}
+	TIFFWriteDirectory(image);
 	// Close the file
 	TIFFClose(image);
 }

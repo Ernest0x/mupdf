@@ -1407,7 +1407,7 @@ void fz_write_pbm(fz_context *ctx, fz_bitmap *bitmap, char *filename);
 
 	filename: The filename to save as (including extension).
 */
-void fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename);
+void fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, int pages);
 
 /*
 	fz_md5_pixmap: Return the md5 digest for a pixmap
