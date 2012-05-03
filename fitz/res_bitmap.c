@@ -119,10 +119,12 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, i
 	unsigned char *p = bitmap->samples;
 	for(row = 0; row < h; row++)
 	{
-		TIFFWriteScanline(image, p, row, 0);
+		if (TIFFWriteScanline(image, p, row, 0) < 0)
+			fz_throw(ctx, "Write error at row %ld of '%s'", row, filename);
 		p += bitmap->stride;
 	}
 	TIFFWriteDirectory(image);
+
 	// Close the file
 	TIFFClose(image);
 }
