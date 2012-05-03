@@ -251,8 +251,12 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		bounds2 = fz_transform_rect(ctm, bounds);
 		bbox = fz_round_rect(bounds2);
 		/* Make local copies of our width/height */
-		w = width;
+		if (strstr(output, ".fax"))
+			w = 1728; // FAX specs need images to be 1728 pixels wide
+		else
+			w = width;
 		h = height;
+
 		/* If a resolution is specified, check to see whether w/h are
 		 * exceeded; if not, unset them. */
 		if (res_specified)
