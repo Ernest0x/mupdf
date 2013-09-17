@@ -31,6 +31,7 @@ static int invert = 0;
 static int width = 0;
 static int height = 0;
 static int fit = 0;
+static int fax = 0;
 
 static fz_text_sheet *sheet = NULL;
 static fz_colorspace *colorspace;
@@ -213,11 +214,16 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		fz_rect bounds, bounds2;
 		fz_bbox bbox;
 		fz_pixmap *pix = NULL;
+		float page_width, page_height;
+		float pagewh_ratio = 1.0;
 		int w, h;
 
 		fz_var(pix);
 
 		bounds = fz_bound_page(doc, page);
+		page_width = bounds.x1 - bounds.x0;
+		page_height = bounds.y1 - bounds.y0;
+
 		zoom = resolution / 72;
 		ctm = fz_scale(zoom, zoom);
 
@@ -230,11 +236,6 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		}
 		else
 		{
-			float page_width, page_height;
-			float pagewh_ratio = 1.0;
-
-			page_width = bounds.x1 - bounds.x0;
-			page_height = bounds.y1 - bounds.y0;
 			if (page_height > 0)
 				pagewh_ratio = page_width / page_height;
 
@@ -249,13 +250,28 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		}
 
 		bounds2 = fz_transform_rect(ctm, bounds);
+		page_width = bounds2.x1 - bounds2.x0;
+		page_height = bounds2.y1 - bounds2.y0;
+
 		bbox = fz_round_rect(bounds2);
+
 		/* Make local copies of our width/height */
-		if (strstr(output, ".fax"))
-			w = 1728; // FAX specs need images to be 1728 pixels wide
+		if (fax)
+		{
+			if (page_width >= 595.0)
+				w = 1728; // FAX specs need images to be 1728 pixels wide
+			else
+				w = width;
+			if (page_height >= 841.0)
+				h = 2200;
+			else
+				h = height;
+		} 
 		else
+		{
 			w = width;
-		h = height;
+			h = height;
+		}
 
 		/* If a resolution is specified, check to see whether w/h are
 		 * exceeded; if not, unset them. */
@@ -275,7 +291,7 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 			float scalex = w/(bounds2.x1-bounds2.x0);
 			float scaley = h/(bounds2.y1-bounds2.y0);
 
-			if (fit)
+			if (fit || fax)
 			{
 				if (w == 0)
 					scalex = 1.0f;
@@ -289,13 +305,14 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 				if (h == 0)
 					scaley = scalex;
 			}
-			if (!fit)
+			if (!fit && !fax)
 			{
 				if (scalex > scaley)
 					scalex = scaley;
 				else
 					scaley = scalex;
 			}
+
 			ctm = fz_concat(ctm, fz_scale(scalex, scaley));
 			bounds2 = fz_transform_rect(ctm, bounds);
 		}
@@ -331,7 +348,7 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 			if (output)
 			{
 				char buf[512];
-				if (strstr(output, ".fax"))
+				if (fax)
 					sprintf(buf, output);
 				else
 					sprintf(buf, output, pagenum);
@@ -346,7 +363,7 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 					fz_write_pbm(ctx, bit, buf);
 					fz_drop_bitmap(ctx, bit);
 				}
-				else if (strstr(output, ".fax")) {
+				else if (fax) {
 					fz_bitmap *bit = fz_halftone_pixmap(ctx, pix, NULL);
 					fz_write_tiff(ctx, bit, buf, pagenum, pages);
 					fz_drop_bitmap(ctx, bit);
@@ -504,6 +521,9 @@ int main(int argc, char **argv)
 	if (fz_optind == argc)
 		usage();
 
+	if (output && strstr(output, ".fax"))
+		fax = 1;
+
 	if (!showtext && !showxml && !showtime && !showmd5 && !showoutline && !output)
 	{
 		printf("nothing to do\n");
@@ -526,7 +546,7 @@ int main(int argc, char **argv)
 		colorspace = fz_device_rgb;
 	if (output && strstr(output, ".pbm"))
 		colorspace = fz_device_gray;
-	if (output && strstr(output, ".fax"))
+	if (fax)
 		colorspace = fz_device_gray;
 	if (grayscale)
 		colorspace = fz_device_gray;

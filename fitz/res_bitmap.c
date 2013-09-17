@@ -97,15 +97,15 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, i
 	int w = bitmap->w;
 	int h = bitmap->h;
 	// We need to set some values for basic tags before we can add any data
-	TIFFSetField(image, TIFFTAG_IMAGEWIDTH, w);
-	TIFFSetField(image, TIFFTAG_IMAGELENGTH, h);
+	TIFFSetField(image, TIFFTAG_IMAGEWIDTH, 1728);
+	TIFFSetField(image, TIFFTAG_IMAGELENGTH, 2200);
 	TIFFSetField(image, TIFFTAG_BITSPERSAMPLE, 1);
 	TIFFSetField(image, TIFFTAG_COMPRESSION, COMPRESSION_CCITTFAX4);
 	TIFFSetField(image, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_MINISWHITE);
 	TIFFSetField(image, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(image, TIFFTAG_SAMPLESPERPIXEL, 1);
 	TIFFSetField(image, TIFFTAG_GROUP4OPTIONS, 0);
-	TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, h);
+	TIFFSetField(image, TIFFTAG_ROWSPERSTRIP, 2200);
 	TIFFSetField(image, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(image, TIFFTAG_FILLORDER, FILLORDER_LSB2MSB);
 	TIFFSetField(image, TIFFTAG_SOFTWARE, "mudraw");
@@ -117,11 +117,31 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, i
 	// Write the information to the file
 	int row;
 	unsigned char *p = bitmap->samples;
-	for(row = 0; row < h; row++)
+	unsigned char row_buf[1728] = {0};
+	int skip_rows = 0;
+	int skip_columns = 0;
+
+	if (h < 2200 - 60)
+		skip_rows = 30;
+	if (w < 1728 - 60)
+		skip_columns = 4;
+
+	for(row = 0; row < 2200; row++)
 	{
-		if (TIFFWriteScanline(image, p, row, 0) < 0)
-			fz_throw(ctx, "Write error at row %d of '%s'", row, filename);
-		p += bitmap->stride;
+		if (h < 2120 && row < skip_rows)
+		{
+			if (TIFFWriteScanline(image, row_buf, row, 0) < 0)
+				fz_throw(ctx, "Write error at row %d of '%s'", row, filename);
+			continue;
+		}
+
+		if (row < h + skip_rows)
+		{
+			memcpy(row_buf + skip_columns, p, bitmap->stride);
+			if (TIFFWriteScanline(image, row_buf, row, 0) < 0)
+				fz_throw(ctx, "Write error at row %d of '%s'", row, filename);
+			p += bitmap->stride;
+		}
 	}
 	TIFFWriteDirectory(image);
 
