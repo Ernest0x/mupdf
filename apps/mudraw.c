@@ -262,11 +262,11 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 				w = 1728; // FAX specs need images to be 1728 pixels wide
 			else
 				w = width;
-			if (page_height >= 841.0)
+			if (page_height >= 791.0)
 				h = 2200;
 			else
 				h = height;
-		} 
+		}
 		else
 		{
 			w = width;
