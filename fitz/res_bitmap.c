@@ -124,7 +124,7 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, i
 	if (h < 2200 - 60)
 		skip_rows = 30;
 	if (w < 1728 - 60)
-		skip_columns = 4;
+		skip_columns = 3;
 
 	for(row = 0; row < 2200; row++)
 	{
@@ -137,12 +137,13 @@ fz_write_tiff(fz_context *ctx, fz_bitmap *bitmap, char *filename, int pagenum, i
 
 		if (row < h + skip_rows)
 		{
-			memcpy(row_buf + skip_columns, p, bitmap->stride);
+			memcpy(row_buf, p, bitmap->stride - skip_columns);
 			if (TIFFWriteScanline(image, row_buf, row, 0) < 0)
 				fz_throw(ctx, "Write error at row %d of '%s'", row, filename);
 			p += bitmap->stride;
 		}
 	}
+
 	TIFFWriteDirectory(image);
 
 	// Close the file

@@ -217,6 +217,7 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		float page_width, page_height;
 		float pagewh_ratio = 1.0;
 		int w, h;
+		float scale_for_fax = 1.0;
 
 		fz_var(pix);
 
@@ -258,14 +259,14 @@ static void drawpage(fz_context *ctx, fz_document *doc, int pagenum, int pages)
 		/* Make local copies of our width/height */
 		if (fax)
 		{
-			if (page_width >= 595.0)
-				w = 1728; // FAX specs need images to be 1728 pixels wide
-			else
-				w = width;
-			if (page_height >= 791.0)
-				h = 2200;
-			else
-				h = height;
+			w = 204 * page_width / 72;
+			h = 196 * page_height / 72;
+			if (w > 1728)
+				scale_for_fax = 1728.0 / w;
+			if (h > 2200)
+				scale_for_fax *= 2200.0 / h;
+			w = scale_for_fax * w;
+			h = scale_for_fax * h;
 		}
 		else
 		{
